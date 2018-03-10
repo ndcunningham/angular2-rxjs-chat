@@ -1,9 +1,6 @@
-import {
-  Component,
-  OnInit,
-  Input
-} from '@angular/core';
-import { Observable } from 'rxjs';
+import { Component, OnInit, Input, OnDestroy } from '@angular/core';
+import { Observable } from 'rxjs/Observable';
+import { Subscription } from 'rxjs/Subscription';
 
 import { UsersService } from './../user/users.service';
 import { ThreadsService } from './../thread/threads.service';
@@ -18,22 +15,26 @@ import { User } from './../user/user.model';
   templateUrl: './chat-message.component.html',
   styleUrls: ['./chat-message.component.css']
 })
-export class ChatMessageComponent implements OnInit {
+export class ChatMessageComponent implements OnInit, OnDestroy {
   @Input() message: Message;
   currentUser: User;
   incoming: boolean;
+  private subscription: Subscription;
 
-  constructor(public UsersService: UsersService) {
-  }
+  constructor(public UsersService: UsersService) {}
 
   ngOnInit(): void {
-    this.UsersService.currentUser
-      .subscribe(
-        (user: User) => {
-          this.currentUser = user;
-          if (this.message.author && user) {
-            this.incoming = this.message.author.id !== user.id;
-          }
-        });
+    this.subscription = this.UsersService.currentUser.subscribe(
+      (user: User) => {
+        this.currentUser = user;
+        if (this.message.author && user) {
+          this.incoming = this.message.author.id !== user.id;
+        }
+      }
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
   }
 }

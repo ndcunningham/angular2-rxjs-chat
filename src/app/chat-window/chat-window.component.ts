@@ -3,9 +3,11 @@ import {
   Inject,
   ElementRef,
   OnInit,
-  ChangeDetectionStrategy
+  ChangeDetectionStrategy,
+  OnDestroy
 } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable } from 'rxjs/Observable';
+import { Subscription } from 'rxjs/Subscription';
 
 import { User } from '../user/user.model';
 import { UsersService } from '../user/users.service';
@@ -20,41 +22,39 @@ import { MessagesService } from '../message/messages.service';
   styleUrls: ['./chat-window.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ChatWindowComponent implements OnInit {
+export class ChatWindowComponent implements OnInit, OnDestroy {
   messages: Observable<any>;
   currentThread: Thread;
   draftMessage: Message;
   currentUser: User;
 
-  constructor(public messagesService: MessagesService,
-              public threadsService: ThreadsService,
-              public UsersService: UsersService,
-              public el: ElementRef) {
-  }
+  private subscription: Subscription;
+
+  constructor(
+    public messagesService: MessagesService,
+    public threadsService: ThreadsService,
+    public UsersService: UsersService,
+    public el: ElementRef
+  ) {}
 
   ngOnInit(): void {
     this.messages = this.threadsService.currentThreadMessages;
 
     this.draftMessage = new Message();
 
-    this.threadsService.currentThread.subscribe(
-      (thread: Thread) => {
-        this.currentThread = thread;
+    this.threadsService.currentThread.subscribe((thread: Thread) => {
+      this.currentThread = thread;
+    });
+
+    this.UsersService.currentUser.subscribe((user: User) => {
+      this.currentUser = user;
+    });
+
+    this.subscription = this.messages.subscribe((messages: Array<Message>) => {
+      setTimeout(() => {
+        this.scrollToBottom();
       });
-
-    this.UsersService.currentUser
-      .subscribe(
-        (user: User) => {
-          this.currentUser = user;
-        });
-
-    this.messages
-      .subscribe(
-        (messages: Array<Message>) => {
-          setTimeout(() => {
-            this.scrollToBottom();
-          });
-        });
+    });
   }
 
   onEnter(event: any): void {
@@ -72,8 +72,13 @@ export class ChatWindowComponent implements OnInit {
   }
 
   scrollToBottom(): void {
-    const scrollPane: any = this.el
-      .nativeElement.querySelector('.msg-container-base');
+    const scrollPane: any = this.el.nativeElement.querySelector(
+      '.msg-container-base'
+    );
     scrollPane.scrollTop = scrollPane.scrollHeight;
+  }
+
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
   }
 }
